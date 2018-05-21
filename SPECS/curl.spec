@@ -73,6 +73,7 @@ BuildRequires: perl(vars)
 
 # using an older version of libcurl could result in CURLE_UNKNOWN_OPTION
 Requires: libcurl%{?_isa} >= %{version}-%{release}
+Requires: ca-certificates
 
 # require at least the version of openssl-libs that we were built against,
 # to ensure that we have the necessary symbols available (#1462184, #1462211)
@@ -216,6 +217,10 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %{_datadir}/aclocal/libcurl.m4
 
 %changelog
+* Mon May 21 2018 Alexander Ursu <alexander.ursu@gmail.com> - 7.60.0-2
+- remove LDAP, GSS-API, SCP, SFTP, metalink support
+- remove minimal packages
+
 * Wed May 16 2018 Kamil Dudka <kdudka@redhat.com> - 7.60.0-1
 - new upstream release, which fixes the following vulnerabilities
     CVE-2018-1000300 - FTP shutdown response buffer overflow
