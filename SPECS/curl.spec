@@ -81,7 +81,7 @@ Requires: libcurl%{?_isa} >= %{version}-%{release}
 
 %description
 curl is a command line tool for transferring data with URL syntax, supporting
-FTP, FTPS, HTTP, HTTPS, SCP, SFTP, TFTP, TELNET, DICT, LDAP, LDAPS, FILE, IMAP,
+FTP, FTPS, HTTP, HTTPS, TFTP, TELNET, DICT, LDAP, LDAPS, FILE, IMAP,
 SMTP, POP3 and RTSP.  curl supports SSL certificates, HTTP POST, HTTP PUT, FTP
 uploading, HTTP form based upload, proxies, cookies, user+password
 authentication (Basic, Digest, NTLM, Negotiate, kerberos...), file transfer
@@ -90,8 +90,8 @@ resume, proxy tunneling and a busload of other useful tricks.
 %package -n libcurl
 Summary: A library for getting files from web servers
 Requires: openssl-libs%{?_isa} >= 1:%{openssl_version}
-Provides: libcurl-full = %{version}-%{release}
-Provides: libcurl-full%{?_isa} = %{version}-%{release}
+Provides: libcurl = %{version}-%{release}
+Provides: libcurl%{?_isa} = %{version}-%{release}
 
 %description -n libcurl
 libcurl is a free and easy-to-use client-side URL transfer library, supporting
@@ -104,7 +104,6 @@ resume, http proxy tunneling and more.
 %package -n libcurl-devel
 Summary: Files needed for building applications with libcurl
 Requires: libcurl%{?_isa} = %{version}-%{release}
-
 Provides: curl-devel = %{version}-%{release}
 Provides: curl-devel%{?_isa} = %{version}-%{release}
 Obsoletes: curl-devel < %{version}-%{release}
@@ -113,37 +112,6 @@ Obsoletes: curl-devel < %{version}-%{release}
 The libcurl-devel package includes header files and libraries necessary for
 developing programs which use the libcurl library. It contains the API
 documentation of the library, too.
-
-%package -n curl-minimal
-Summary: Conservatively configured build of curl for minimal installations
-Provides: curl = %{version}-%{release}
-Conflicts: curl
-RemovePathPostfixes: .minimal
-
-# using an older version of libcurl could result in CURLE_UNKNOWN_OPTION
-Requires: libcurl%{?_isa} >= %{version}-%{release}
-
-%description -n curl-minimal
-This is a replacement of the 'curl' package for minimal installations.  It
-comes with a limited set of features compared to the 'curl' package.  On the
-other hand, the package is smaller and requires fewer run-time dependencies to
-be installed.
-
-%package -n libcurl-minimal
-Summary: Conservatively configured build of libcurl for minimal installations
-Requires: openssl-libs%{?_isa} >= 1:%{openssl_version}
-Provides: libcurl = %{version}-%{release}
-Provides: libcurl%{?_isa} = %{version}-%{release}
-Conflicts: libcurl
-RemovePathPostfixes: .minimal
-# needed for RemovePathPostfixes to work with shared libraries
-%undefine __brp_ldconfig
-
-%description -n libcurl-minimal
-This is a replacement of the 'libcurl' package for minimal installations.  It
-comes with a limited set of features compared to the 'libcurl' package.  On the
-other hand, the package is smaller and requires fewer run-time dependencies to
-be installed.
 
 %prep
 %setup -q
@@ -177,48 +145,28 @@ echo "1319" >> tests/data/DISABLED
 %endif
 
 %build
-mkdir build-{full,minimal}
-export common_configure_opts=" \
+%configure \
     --cache-file=../config.cache \
     --disable-static \
     --enable-symbol-hiding \
     --enable-ipv6 \
     --enable-threaded-resolver \
     --with-nghttp2 \
-    --with-ssl --with-ca-bundle=%{_sysconfdir}/pki/tls/certs/ca-bundle.crt"
-
-%global _configure ../configure
-
-# configure minimal build
-(
-    cd build-minimal
-    %configure $common_configure_opts \
-        --disable-ldap \
-        --disable-ldaps \
-        --disable-manual \
-        --without-libidn2
-)
-
-# configure full build
-(
-    cd build-full
-    %configure $common_configure_opts \
-        --enable-ldap \
-        --enable-ldaps \
-        --enable-manual \
-        --with-libidn2 \
+    --with-ssl --with-ca-bundle=%{_sysconfdir}/pki/tls/certs/ca-bundle.crt \
+    --disable-ldap \
+    --disable-ldaps \
+    --disable-manual \
+    --with-libidn2 \
 %if 0%{?rhel} >= 7 || 0%{?fedora} >= 19
         --with-libpsl
 %endif
-)
 
 # avoid using rpath
 sed -e 's/^runpath_var=.*/runpath_var=/' \
     -e 's/^hardcode_libdir_flag_spec=".*"$/hardcode_libdir_flag_spec=""/' \
-    -i build-{full,minimal}/libtool
+    -i libtool
 
-make %{?_smp_mflags} V=1 -C build-minimal
-make %{?_smp_mflags} V=1 -C build-full
+make %{?_smp_mflags} V=1
 
 %check
 # we have to override LD_LIBRARY_PATH because we eliminated rpath
@@ -226,31 +174,19 @@ LD_LIBRARY_PATH="$RPM_BUILD_ROOT%{_libdir}:$LD_LIBRARY_PATH"
 export LD_LIBRARY_PATH
 
 # compile upstream test-cases
-cd build-full/tests
+cd tests
 make %{?_smp_mflags} V=1
 
 # run the upstream test-suite
-srcdir=../../tests perl -I../../tests ../../tests/runtests.pl -a -p -v '!flaky'
+srcdir=../tests perl -I../tests ../tests/runtests.pl -a -p -v '!flaky'
 
 %install
-# install and rename the library that will be packaged as libcurl-minimal
-make DESTDIR=$RPM_BUILD_ROOT INSTALL="install -p" install -C build-minimal/lib
-rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.{la,so}
-for i in ${RPM_BUILD_ROOT}%{_libdir}/*; do
-    mv -v $i $i.minimal
-done
-
-# install and rename the executable that will be packaged as curl-minimal
-make DESTDIR=$RPM_BUILD_ROOT INSTALL="install -p" install -C build-minimal/src
-mv -v ${RPM_BUILD_ROOT}%{_bindir}/curl{,.minimal}
+# install the executable and library that will be packaged as curl and libcurl
+make DESTDIR=$RPM_BUILD_ROOT INSTALL="install -p" install
 
 # install libcurl.m4
 install -d $RPM_BUILD_ROOT%{_datadir}/aclocal
 install -m 644 docs/libcurl/libcurl.m4 $RPM_BUILD_ROOT%{_datadir}/aclocal
-
-# install the executable and library that will be packaged as curl and libcurl
-cd build-full
-make DESTDIR=$RPM_BUILD_ROOT INSTALL="install -p" install
 
 # install zsh completion for curl
 # (we have to override LD_LIBRARY_PATH because we eliminated rpath)
@@ -260,8 +196,6 @@ LD_LIBRARY_PATH="$RPM_BUILD_ROOT%{_libdir}:$LD_LIBRARY_PATH" \
 rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 
 %ldconfig_scriptlets -n libcurl
-
-%ldconfig_scriptlets -n libcurl-minimal
 
 %files
 %doc CHANGES README*
@@ -287,15 +221,6 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %{_mandir}/man1/curl-config.1*
 %{_mandir}/man3/*
 %{_datadir}/aclocal/libcurl.m4
-
-%files -n curl-minimal
-%{_bindir}/curl.minimal
-%{_mandir}/man1/curl.1*
-
-%files -n libcurl-minimal
-%license COPYING
-%{_libdir}/libcurl.so.4.minimal
-%{_libdir}/libcurl.so.4.[0-9].[0-9].minimal
 
 %changelog
 * Wed May 16 2018 Kamil Dudka <kdudka@redhat.com> - 7.60.0-1
