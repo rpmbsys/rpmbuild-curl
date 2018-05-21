@@ -187,11 +187,6 @@ make DESTDIR=$RPM_BUILD_ROOT INSTALL="install -p" install
 install -d $RPM_BUILD_ROOT%{_datadir}/aclocal
 install -m 644 docs/libcurl/libcurl.m4 $RPM_BUILD_ROOT%{_datadir}/aclocal
 
-# install zsh completion for curl
-# (we have to override LD_LIBRARY_PATH because we eliminated rpath)
-LD_LIBRARY_PATH="$RPM_BUILD_ROOT%{_libdir}:$LD_LIBRARY_PATH" \
-    make DESTDIR=$RPM_BUILD_ROOT INSTALL="install -p" install -C scripts
-
 rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 
 %ldconfig_scriptlets -n libcurl
@@ -203,7 +198,6 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %doc docs/TheArtOfHttpScripting docs/TODO
 %{_bindir}/curl
 %{_mandir}/man1/curl.1*
-%{_datadir}/zsh/site-functions
 
 %files -n libcurl
 %license COPYING
