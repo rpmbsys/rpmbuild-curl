@@ -26,7 +26,9 @@ BuildRequires: gcc
 BuildRequires: groff
 BuildRequires: libidn2-devel
 BuildRequires: libnghttp2-devel
+%if 0%{?rhel} >= 7 || 0%{?fedora} >= 19
 BuildRequires: libpsl-devel
+%endif
 BuildRequires: libssh-devel
 BuildRequires: make
 BuildRequires: openldap-devel
@@ -203,7 +205,6 @@ export common_configure_opts=" \
         --disable-ldaps \
         --disable-manual \
         --without-libidn2 \
-        --without-libpsl \
         --without-libssh
 )
 
@@ -215,7 +216,9 @@ export common_configure_opts=" \
         --enable-ldaps \
         --enable-manual \
         --with-libidn2 \
+%if 0%{?rhel} >= 7 || 0%{?fedora} >= 19
         --with-libpsl \
+%endif
         --with-libssh
 )
 
