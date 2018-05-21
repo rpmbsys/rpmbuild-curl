@@ -25,7 +25,6 @@ BuildRequires: coreutils
 BuildRequires: gcc
 BuildRequires: groff
 BuildRequires: libidn2-devel
-BuildRequires: libmetalink-devel
 BuildRequires: libnghttp2-devel
 BuildRequires: libpsl-devel
 BuildRequires: libssh-devel
@@ -204,7 +203,6 @@ export common_configure_opts=" \
         --disable-ldaps \
         --disable-manual \
         --without-libidn2 \
-        --without-libmetalink \
         --without-libpsl \
         --without-libssh
 )
@@ -217,7 +215,6 @@ export common_configure_opts=" \
         --enable-ldaps \
         --enable-manual \
         --with-libidn2 \
-        --with-libmetalink \
         --with-libpsl \
         --with-libssh
 )
