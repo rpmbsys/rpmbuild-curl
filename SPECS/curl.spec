@@ -29,11 +29,8 @@ BuildRequires: libnghttp2-devel
 %if 0%{?rhel} >= 7 || 0%{?fedora} >= 19
 BuildRequires: libpsl-devel
 %endif
-BuildRequires: libssh-devel
 BuildRequires: make
 BuildRequires: openldap-devel
-BuildRequires: openssh-clients
-BuildRequires: openssh-server
 BuildRequires: openssl-devel
 BuildRequires: pkgconfig
 %if 0%{?fedora} >= 29
@@ -78,10 +75,6 @@ BuildRequires: perl(vars)
 # using an older version of libcurl could result in CURLE_UNKNOWN_OPTION
 Requires: libcurl%{?_isa} >= %{version}-%{release}
 
-# require at least the version of libssh that we were built against,
-# to ensure that we have the necessary symbols available (#525002, #642796)
-%global libssh_version %(pkg-config --modversion libssh 2>/dev/null || echo 0)
-
 # require at least the version of openssl-libs that we were built against,
 # to ensure that we have the necessary symbols available (#1462184, #1462211)
 %global openssl_version %(pkg-config --modversion openssl 2>/dev/null || echo 0)
@@ -96,7 +89,6 @@ resume, proxy tunneling and a busload of other useful tricks.
 
 %package -n libcurl
 Summary: A library for getting files from web servers
-Requires: libssh%{?_isa} >= %{libssh_version}
 Requires: openssl-libs%{?_isa} >= 1:%{openssl_version}
 Provides: libcurl-full = %{version}-%{release}
 Provides: libcurl-full%{?_isa} = %{version}-%{release}
@@ -204,8 +196,7 @@ export common_configure_opts=" \
         --disable-ldap \
         --disable-ldaps \
         --disable-manual \
-        --without-libidn2 \
-        --without-libssh
+        --without-libidn2
 )
 
 # configure full build
@@ -217,9 +208,8 @@ export common_configure_opts=" \
         --enable-manual \
         --with-libidn2 \
 %if 0%{?rhel} >= 7 || 0%{?fedora} >= 19
-        --with-libpsl \
+        --with-libpsl
 %endif
-        --with-libssh
 )
 
 # avoid using rpath
