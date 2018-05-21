@@ -36,7 +36,9 @@ BuildRequires: openssh-clients
 BuildRequires: openssh-server
 BuildRequires: openssl-devel
 BuildRequires: pkgconfig
+%if 0%{?fedora} >= 29
 BuildRequires: python3
+%endif
 BuildRequires: sed
 BuildRequires: stunnel
 BuildRequires: zlib-devel
@@ -90,7 +92,7 @@ FTP, FTPS, HTTP, HTTPS, SCP, SFTP, TFTP, TELNET, DICT, LDAP, LDAPS, FILE, IMAP,
 SMTP, POP3 and RTSP.  curl supports SSL certificates, HTTP POST, HTTP PUT, FTP
 uploading, HTTP form based upload, proxies, cookies, user+password
 authentication (Basic, Digest, NTLM, Negotiate, kerberos...), file transfer
-resume, proxy tunneling and a busload of other useful tricks. 
+resume, proxy tunneling and a busload of other useful tricks.
 
 %package -n libcurl
 Summary: A library for getting files from web servers
@@ -159,11 +161,15 @@ be installed.
 # Fedora patches
 %patch101 -p1
 %patch102 -p1
+%if 0%{?fedora} >= 29
 %patch103 -p1
+%endif
 %patch104 -p1
 
+%if 0%{?fedora} >= 29
 # make tests/*.py use Python 3
 sed -e '1 s|^#!/.*python|&3|' -i tests/*.py
+%endif
 
 # regenerate Makefile.in files
 #aclocal -I m4
@@ -1335,7 +1341,7 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 - update to 7.15.3
 
 * Thu Feb 23 2006 Ivana Varekova <varekova@redhat.com> - 7.15.1-2
-- fix multilib problem - #181290 - 
+- fix multilib problem - #181290 -
   curl-devel.i386 not installable together with curl-devel.x86-64
 
 * Fri Feb 10 2006 Jesse Keating <jkeating@redhat.com> - 7.15.1-1.2.1
@@ -1363,11 +1369,11 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 - update to 7.14.1
 
 * Thu Jun 16 2005 Ivana Varekova <varekova@redhat.com> 7.14.0-1
-- rebuild new version 
+- rebuild new version
 
 * Tue May 03 2005 Ivana Varekova <varekova@redhat.com> 7.13.1-3
 - fix bug 150768 - curl-7.12.3-2 breaks basic authentication
-  used Daniel Stenberg patch 
+  used Daniel Stenberg patch
 
 * Mon Apr 25 2005 Joe Orton <jorton@redhat.com> 7.13.1-2
 - update to use ca-bundle in /etc/pki
@@ -1414,7 +1420,7 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 * Wed Apr 07 2004 Adrian Havill <havill@redhat.com> 7.11.1-1
 - upgraded; updated nousr patch
 - added COPYING (#115956)
-- 
+-
 
 * Tue Mar 02 2004 Elliot Lee <sopwith@redhat.com>
 - rebuilt
@@ -1500,7 +1506,7 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 - 7.9.6
 
 * Thu Mar 21 2002 Trond Eivind Glomsrød <teg@redhat.com> 7.9.5-2
-- Stop the curl-config script from printing -I/usr/include 
+- Stop the curl-config script from printing -I/usr/include
   and -L/usr/lib (#59497)
 
 * Fri Mar  8 2002 Trond Eivind Glomsrød <teg@redhat.com> 7.9.5-1
@@ -1550,7 +1556,7 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 * Fri Oct 20 2000 Nalin Dahyabhai <nalin@redhat.com>
 - fix bogus req in -devel package
 
-* Fri Oct 20 2000 Tim Powers <timp@redhat.com> 
+* Fri Oct 20 2000 Tim Powers <timp@redhat.com>
 - devel package needed defattr so that root owns the files
 
 * Mon Oct 16 2000 Nalin Dahyabhai <nalin@redhat.com>
