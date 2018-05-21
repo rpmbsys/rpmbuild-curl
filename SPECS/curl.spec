@@ -24,7 +24,6 @@ URL: https://curl.haxx.se/
 BuildRequires: coreutils
 BuildRequires: gcc
 BuildRequires: groff
-BuildRequires: krb5-devel
 BuildRequires: libidn2-devel
 BuildRequires: libmetalink-devel
 BuildRequires: libnghttp2-devel
@@ -192,7 +191,6 @@ export common_configure_opts=" \
     --enable-symbol-hiding \
     --enable-ipv6 \
     --enable-threaded-resolver \
-    --with-gssapi \
     --with-nghttp2 \
     --with-ssl --with-ca-bundle=%{_sysconfdir}/pki/tls/certs/ca-bundle.crt"
 
