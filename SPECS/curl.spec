@@ -20,7 +20,6 @@ Patch104: 0104-curl-7.19.7-localhost6.patch
 Provides: webclient
 URL: https://curl.haxx.se/
 #BuildRequires: automake
-BuildRequires: coreutils
 BuildRequires: gcc
 BuildRequires: groff
 BuildRequires: libidn2-devel
@@ -29,13 +28,10 @@ BuildRequires: libnghttp2-devel
 BuildRequires: libpsl-devel
 %endif
 BuildRequires: make
-BuildRequires: openldap-devel
 BuildRequires: openssl-devel
-BuildRequires: pkgconfig
 %if 0%{?fedora} >= 29
 BuildRequires: python3
 %endif
-BuildRequires: sed
 BuildRequires: stunnel
 BuildRequires: zlib-devel
 
