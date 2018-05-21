@@ -17,7 +17,6 @@ Patch103: 0103-curl-7.59.0-python3.patch
 # use localhost6 instead of ip6-localhost in the curl test-suite
 Patch104: 0104-curl-7.19.7-localhost6.patch
 
-Provides: curl-full = %{version}-%{release}
 Provides: webclient
 URL: https://curl.haxx.se/
 #BuildRequires: automake
