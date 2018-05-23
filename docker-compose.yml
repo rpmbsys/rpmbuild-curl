@@ -14,8 +14,8 @@ services:
     image: centos:6-rpmbuild
   curlbuild:
     volumes:
-      - rpms:/root/rpmbuild/SRPMS
-      - rpm6:/root/rpmbuild/RPMS
+      - rpms:/home/centos/rpmbuild/SRPMS
+      - rpm6:/home/centos/rpmbuild/RPMS
     build:
       context: .
     image: centos:6-curlbuild
