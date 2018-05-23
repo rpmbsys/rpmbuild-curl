@@ -13,6 +13,14 @@ services:
       context: centos/6/rpmbuild
     image: centos:6-rpmbuild
   curlbuild:
+    volumes:
+      - rpms:/root/rpmbuild/SRPMS
+      - rpm6:/root/rpmbuild/RPMS
     build:
       context: .
     image: centos:6-curlbuild
+
+volumes:
+  rpms:
+  rpm6:
+  rpm7:
