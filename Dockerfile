@@ -1,5 +1,6 @@
 FROM centos:6-rpmbuild
 
+USER root
 RUN yum -y install \
         gnutls-utils \
         libidn2-devel \
@@ -11,8 +12,11 @@ RUN yum -y install \
         zlib-devel \
     && yum clean all && rm -rf /var/cache/yum
 
-COPY SOURCES /root/rpmbuild/SOURCES
-COPY SPECS /root/rpmbuild/SPECS
+COPY SOURCES ${BUILD_TOPDIR}/SOURCES
+COPY SPECS ${BUILD_TOPDIR}/SPECS
 
+RUN chown -R $BUILD_USER ${BUILD_TOPDIR}/{SOURCES,SPECS}
+
+USER $BUILD_USER
 ENTRYPOINT ["/usr/bin/rpmbuild", "curl.spec"]
 CMD ["-ba"]
