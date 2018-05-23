@@ -1,3 +1,5 @@
+%global with_test 0%{?_with_test:1}
+
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
 Version: 7.60.0
@@ -85,7 +87,11 @@ resume, proxy tunneling and a busload of other useful tricks.
 
 %package -n libcurl
 Summary: A library for getting files from web servers
+%if 0%{?rhel} >= 7 || 0%{?fedora} >= 18
 Requires: openssl-libs%{?_isa} >= 1:%{openssl_version}
+%else
+Requires: openssl%{?_isa} >= 1:%{openssl_version}
+%endif
 Provides: libcurl = %{version}-%{release}
 Provides: libcurl%{?_isa} = %{version}-%{release}
 
@@ -165,6 +171,7 @@ sed -e 's/^runpath_var=.*/runpath_var=/' \
 make %{?_smp_mflags} V=1
 
 %check
+%if %{with_test}
 # we have to override LD_LIBRARY_PATH because we eliminated rpath
 LD_LIBRARY_PATH="$RPM_BUILD_ROOT%{_libdir}:$LD_LIBRARY_PATH"
 export LD_LIBRARY_PATH
@@ -175,6 +182,7 @@ make %{?_smp_mflags} V=1
 
 # run the upstream test-suite
 srcdir=../tests perl -I../tests ../tests/runtests.pl -a -p -v '!flaky'
+%endif
 
 %install
 # install the executable and library that will be packaged as curl and libcurl
