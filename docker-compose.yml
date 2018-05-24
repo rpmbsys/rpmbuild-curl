@@ -4,7 +4,7 @@ services:
     volumes:
       - rpm6:/home/centos/rpmbuild/RPMS
     build:
-      context: createrepo
+      context: rpmbuild/createrepo
     image: rpmbuild:createrepo
     restart: always
   centos7repo:
