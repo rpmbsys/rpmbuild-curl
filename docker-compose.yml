@@ -12,6 +12,21 @@ services:
     build:
       context: centos/6/rpmbuild
     image: centos:6-rpmbuild
+  centos7curl:
+    build:
+      context: centos/7/curl
+    image: centos:7-curl
+  httpd:
+    build:
+      context: centos/7/httpd
+    image: centos:httpd
+  webrepo:
+    volumes:
+      - rpm6:/home/centos-6/rpmbuild/RPMS
+      - rpm7:/home/centos-7/rpmbuild/RPMS
+    build:
+      context: centos/7/webrepo
+    image: centos:webrepo
   curlbuild:
     volumes:
       - rpms:/home/centos/rpmbuild/SRPMS
