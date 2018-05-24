@@ -1,5 +1,19 @@
 version: "3.4"
 services:
+  centos6repo:
+    volumes:
+      - rpm6:/home/centos/rpmbuild/RPMS
+    build:
+      context: createrepo
+    image: rpmbuild:createrepo
+    restart: always
+  centos7repo:
+    volumes:
+      - rpm7:/home/centos/rpmbuild/RPMS
+    build:
+      context: rpmbuild/createrepo
+    image: rpmbuild:createrepo
+    restart: always
   webrepo:
     volumes:
       - rpm6:/home/centos-6/rpmbuild/RPMS
@@ -7,20 +21,21 @@ services:
     build:
       context: rpmbuild/webrepo
     image: rpmbuild:webrepo
-  createrepo:
-    volumes:
-      - rpm6:/home/centos/rpmbuild/RPMS
-    build:
-      context: rpmbuild/createrepo
-    image: rpmbuild:createrepo
-    restart: always
-  curlbuild:
+  centos6curlbuild:
     volumes:
       - rpms:/home/centos/rpmbuild/SRPMS
       - rpm6:/home/centos/rpmbuild/RPMS
     build:
       context: .
     image: rpmbuild:6-curlbuild
+  centos7curlbuild:
+    volumes:
+      - rpms:/home/centos/rpmbuild/SRPMS
+      - rpm7:/home/centos/rpmbuild/RPMS
+    build:
+      context: .
+      dockerfile: Dockerfile.el7
+    image: rpmbuild:7-curlbuild
 
 volumes:
   rpms:
