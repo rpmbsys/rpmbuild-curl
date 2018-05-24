@@ -7,20 +7,20 @@ services:
     build:
       context: rpmbuild/webrepo
     image: rpmbuild:webrepo
-  createrepo:
+  createrepo7:
     volumes:
-      - rpm6:/home/centos/rpmbuild/RPMS
+      - rpm7:/home/centos/rpmbuild/RPMS
     build:
       context: rpmbuild/createrepo
     image: rpmbuild:createrepo
     restart: always
-  curlbuild:
+  curlbuild7:
     volumes:
       - rpms:/home/centos/rpmbuild/SRPMS
-      - rpm6:/home/centos/rpmbuild/RPMS
+      - rpm7:/home/centos/rpmbuild/RPMS
     build:
       context: .
-    image: rpmbuild:6-curlbuild
+    image: rpmbuild:7-curlbuild
 
 volumes:
   rpms:
