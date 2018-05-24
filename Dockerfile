@@ -1,4 +1,4 @@
-FROM centos:6-rpmbuild
+FROM rpmbuild:6-build
 
 USER root
 RUN yum -y install \
