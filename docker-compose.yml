@@ -21,6 +21,8 @@ services:
     build:
       context: rpmbuild/webrepo
     image: rpmbuild:webrepo
+    ports:
+      - "80:80"
   centos6curlbuild:
     volumes:
       - rpms:/home/centos/rpmbuild/SRPMS
