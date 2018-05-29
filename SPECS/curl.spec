@@ -90,7 +90,7 @@ Summary: A library for getting files from web servers
 %if 0%{?rhel} >= 7 || 0%{?fedora} >= 18
 Requires: openssl-libs%{?_isa} >= 1:%{openssl_version}
 %else
-Requires: openssl%{?_isa} >= 1:%{openssl_version}
+Requires: openssl%{?_isa} >= %{openssl_version}
 %endif
 Provides: libcurl = %{version}-%{release}
 Provides: libcurl%{?_isa} = %{version}-%{release}
