@@ -112,7 +112,7 @@ to run any of them or run in foreground etc
 
 1. Just browse on build host URL http://localhost/ or
 2. use `docker cp` command from container `webrepo` from paths
-`/home/centos-6/rpmbuild/RPMS` and `/home/centos-7/rpmbuild/RPMS
+`/home/centos-6/rpmbuild/RPMS` and `/home/centos-7/rpmbuild/RPMS`
 
 ### Complete build
 
