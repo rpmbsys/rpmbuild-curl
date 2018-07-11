@@ -6,7 +6,7 @@ services:
       - rpm6:/home/centos/rpmbuild/RPMS
     build:
       context: .
-    image: rpmbuild:6-curlbuild
+    image: aursu/curlbuild:6
   centos7curlbuild:
     volumes:
       - rpms:/home/centos/rpmbuild/SRPMS
@@ -14,7 +14,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.el7
-    image: rpmbuild:7-curlbuild
+    image: aursu/curlbuild:7
 
 volumes:
   rpms:
