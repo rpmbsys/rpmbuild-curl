@@ -1,5 +1,15 @@
 version: "3.4"
 services:
+  centos6curlbase:
+    build:
+      context: .
+      dockerfile: Dockerfile.6-base
+    image: aursu/curlbuild:6-base
+  centos7curlbase:
+    build:
+      context: .
+      dockerfile: Dockerfile.base
+    image: aursu/curlbuild:7-base
   centos6curlbuild:
     volumes:
       - rpms:/home/centos/rpmbuild/SRPMS

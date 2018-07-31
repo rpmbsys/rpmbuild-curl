@@ -1,18 +1,4 @@
-FROM aursu/rpmbuild:7-build
-
-USER root
-RUN yum -y install \
-        gnutls-utils \
-        groff \
-        libidn2-devel \
-        libnghttp2-devel \
-        libpsl-devel \
-        nghttp2 \
-        openssl-devel \
-        perl-Digest-MD5 \
-        stunnel \
-        zlib-devel \
-    && yum clean all && rm -rf /var/cache/yum
+FROM aursu/curlbuild:7-base
 
 COPY SOURCES ${BUILD_TOPDIR}/SOURCES
 COPY SPECS ${BUILD_TOPDIR}/SPECS
