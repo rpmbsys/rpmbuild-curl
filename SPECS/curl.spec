@@ -2,8 +2,8 @@
 
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
-Version: 7.60.0
-Release: 2%{?dist}
+Version: 7.61.0
+Release: 1%{?dist}
 License: MIT
 Source: https://curl.haxx.se/download/%{name}-%{version}.tar.xz
 
@@ -32,7 +32,7 @@ BuildRequires: libpsl-devel
 BuildRequires: make
 BuildRequires: openssl-devel
 %if 0%{?fedora} >= 29
-BuildRequires: python3
+BuildRequires: python3-devel
 %endif
 BuildRequires: stunnel
 BuildRequires: zlib-devel
@@ -130,16 +130,17 @@ documentation of the library, too.
 
 %if 0%{?fedora} >= 29
 # make tests/*.py use Python 3
-sed -e '1 s|^#!/.*python|&3|' -i tests/*.py
+sed -e '1 s|^#!/.*python|#!%{__python3}|' -i tests/*.py
 %endif
 
 # regenerate Makefile.in files
 #aclocal -I m4
 #automake
 
-# disable test 1112 (#565305) and test 1801
+# disable test 1112 (#565305), test 1455 (occasionally fails with 'bind failed
+# with errno 98: Address already in use' in Koji environment), and test 1801
 # <https://github.com/bagder/curl/commit/21e82bd6#commitcomment-12226582>
-printf "1112\n1801\n" >> tests/data/DISABLED
+printf "1112\n1455\n1801\n" >> tests/data/DISABLED
 
 # disable test 1319 on ppc64 (server times out)
 %ifarch ppc64
@@ -221,6 +222,10 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %{_datadir}/aclocal/libcurl.m4
 
 %changelog
+* Wed Jul 11 2018 Kamil Dudka <kdudka@redhat.com> - 7.61.0-1
+- new upstream release, which fixes the following vulnerability
+    CVE-2018-0500 - SMTP send heap buffer overflow
+
 * Mon May 21 2018 Alexander Ursu <alexander.ursu@gmail.com> - 7.60.0-2
 - remove LDAP, GSS-API, SCP, SFTP, metalink support
 - remove minimal packages
