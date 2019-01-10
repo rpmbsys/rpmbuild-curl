@@ -2,10 +2,19 @@
 
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
-Version: 7.61.0
-Release: 1%{?dist}
+Version: 7.63.0
+Release: 4%{?dist}
 License: MIT
 Source: https://curl.haxx.se/download/%{name}-%{version}.tar.xz
+
+# revert an upstream commit that broke `fedpkg new-sources` (#1659329)
+Patch1:   0001-curl-7.62.0-http-post-negotiate.patch
+
+# libtest: avoid symbol lookup error in libstubgss.so
+Patch2:   0002-curl-7.62.0-libtest-stub_gssapi-snprintf.patch
+
+# curl -J: do not append to the destination file (#1658574)
+Patch7:   0007-curl-7.63.0-JO-preserve-local-file.patch
 
 # patch making libcurl multilib ready
 Patch101: 0101-curl-7.32.0-multilib.patch
@@ -21,7 +30,7 @@ Patch104: 0104-curl-7.19.7-localhost6.patch
 
 Provides: webclient
 URL: https://curl.haxx.se/
-#BuildRequires: automake
+BuildRequires: automake
 BuildRequires: gcc
 BuildRequires: groff
 BuildRequires: libidn2-devel
@@ -36,6 +45,9 @@ BuildRequires: python3-devel
 %endif
 BuildRequires: stunnel
 BuildRequires: zlib-devel
+
+# needed to compress content of tool_hugehelp.c after changing curl.1 man page
+BuildRequires: perl(IO::Compress::Gzip)
 
 # gnutls-serv is used by the upstream test-suite
 BuildRequires: gnutls-utils
@@ -73,6 +85,10 @@ BuildRequires: perl(vars)
 Requires: libcurl%{?_isa} >= %{version}-%{release}
 Requires: ca-certificates
 
+# require at least the version of libpsl that we were built against,
+# to ensure that we have the necessary symbols available (#1631804)
+%global libpsl_version %(pkg-config --modversion libpsl 2>/dev/null || echo 0)
+
 # require at least the version of openssl-libs that we were built against,
 # to ensure that we have the necessary symbols available (#1462184, #1462211)
 %global openssl_version %(pkg-config --modversion openssl 2>/dev/null || echo 0)
@@ -92,6 +108,7 @@ Requires: openssl-libs%{?_isa} >= 1:%{openssl_version}
 %else
 Requires: openssl%{?_isa} >= %{openssl_version}
 %endif
+Requires: libpsl%{?_isa} >= %{libpsl_version}
 Provides: libcurl = %{version}-%{release}
 Provides: libcurl%{?_isa} = %{version}-%{release}
 
@@ -118,7 +135,12 @@ documentation of the library, too.
 %prep
 %setup -q
 
+# upstream patches to revert
+%patch1 -p1 -R
+
 # upstream patches
+%patch2 -p1
+%patch7 -p1
 
 # Fedora patches
 %patch101 -p1
@@ -134,18 +156,28 @@ sed -e '1 s|^#!/.*python|#!%{__python3}|' -i tests/*.py
 %endif
 
 # regenerate Makefile.in files
-#aclocal -I m4
-#automake
+aclocal -I m4
+autoconf
+automake --add-missing --foreign
 
 # disable test 1112 (#565305), test 1455 (occasionally fails with 'bind failed
 # with errno 98: Address already in use' in Koji environment), and test 1801
 # <https://github.com/bagder/curl/commit/21e82bd6#commitcomment-12226582>
-printf "1112\n1455\n1801\n" >> tests/data/DISABLED
+# and test 1900, which is flaky and covers a deprecated feature of libcurl
+# <https://github.com/curl/curl/pull/2705>
+printf "1112\n1455\n1801\n1900\n" >> tests/data/DISABLED
 
 # disable test 1319 on ppc64 (server times out)
 %ifarch ppc64
 echo "1319" >> tests/data/DISABLED
 %endif
+
+%ifarch s390x
+echo "582" >> tests/data/DISABLED
+%endif
+
+# adapt test 323 for updated OpenSSL
+sed -e 's/^35$/35,52/' -i tests/data/test323
 
 %build
 %configure \
@@ -180,6 +212,10 @@ export LD_LIBRARY_PATH
 # compile upstream test-cases
 cd tests
 make %{?_smp_mflags} V=1
+
+# relax crypto policy for the test-suite to make it pass again (#1610888)
+export OPENSSL_SYSTEM_CIPHERS_OVERRIDE=XXX
+export OPENSSL_CONF=
 
 # run the upstream test-suite
 srcdir=../tests perl -I../tests ../tests/runtests.pl -a -p -v '!flaky'
@@ -222,6 +258,56 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %{_datadir}/aclocal/libcurl.m4
 
 %changelog
+* Fri Jan 04 2019 Kamil Dudka <kdudka@redhat.com> - 7.63.0-4
+- replace 0105-curl-7.63.0-libstubgss-ldadd.patch by upstream patch
+
+* Wed Dec 19 2018 Kamil Dudka <kdudka@redhat.com> - 7.63.0-3
+- curl -J: do not append to the destination file (#1658574)
+
+* Fri Dec 14 2018 Kamil Dudka <kdudka@redhat.com> - 7.63.0-2
+- revert an upstream commit that broke `fedpkg new-sources` (#1659329)
+
+* Wed Oct 31 2018 Kamil Dudka <kdudka@redhat.com> - 7.62.0-1
+- new upstream release, which fixes the following vulnerabilities
+    CVE-2018-16839 - SASL password overflow via integer overflow
+    CVE-2018-16840 - use-after-free in handle close
+    CVE-2018-16842 - warning message out-of-buffer read
+
+* Thu Oct 11 2018 Kamil Dudka <kdudka@redhat.com> - 7.61.1-3
+- enable TLS 1.3 post-handshake auth in OpenSSL
+- update the documentation of --tlsv1.0 in curl(1) man page
+
+* Thu Oct 04 2018 Kamil Dudka <kdudka@redhat.com> - 7.61.1-2
+- enforce versioned libpsl dependency for libcurl (#1631804)
+- test320: update expected output for gnutls-3.6.4
+- drop 0105-curl-7.61.0-tests-ssh-keygen.patch no longer needed (#1622594)
+
+* Wed Sep 05 2018 Kamil Dudka <kdudka@redhat.com> - 7.61.1-1
+- new upstream release, which fixes the following vulnerability
+    CVE-2018-14618 - NTLM password overflow via integer overflow
+
+* Tue Sep 04 2018 Kamil Dudka <kdudka@redhat.com> - 7.61.0-8
+- make the --tls13-ciphers option work
+
+* Mon Aug 27 2018 Kamil Dudka <kdudka@redhat.com> - 7.61.0-7
+- tests: make ssh-keygen always produce PEM format (#1622594)
+
+* Wed Aug 15 2018 Kamil Dudka <kdudka@redhat.com> - 7.61.0-6
+- scp/sftp: fix infinite connect loop on invalid private key (#1595135)
+
+* Thu Aug 09 2018 Kamil Dudka <kdudka@redhat.com> - 7.61.0-5
+- ssl: set engine implicitly when a PKCS#11 URI is provided (#1219544)
+
+* Tue Aug 07 2018 Kamil Dudka <kdudka@redhat.com> - 7.61.0-4
+- relax crypto policy for the test-suite to make it pass again (#1610888)
+
+* Tue Jul 31 2018 Kamil Dudka <kdudka@redhat.com> - 7.61.0-3
+- disable flaky test 1900, which covers deprecated HTTP pipelining
+- adapt test 323 for updated OpenSSL
+
+* Thu Jul 12 2018 Fedora Release Engineering <releng@fedoraproject.org> - 7.61.0-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_29_Mass_Rebuild
+
 * Wed Jul 11 2018 Kamil Dudka <kdudka@redhat.com> - 7.61.0-1
 - new upstream release, which fixes the following vulnerability
     CVE-2018-0500 - SMTP send heap buffer overflow
