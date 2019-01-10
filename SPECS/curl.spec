@@ -3,7 +3,7 @@
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
 Version: 7.63.0
-Release: 4%{?dist}
+Release: 5%{?dist}
 License: MIT
 Source: https://curl.haxx.se/download/%{name}-%{version}.tar.xz
 
@@ -108,7 +108,9 @@ Requires: openssl-libs%{?_isa} >= 1:%{openssl_version}
 %else
 Requires: openssl%{?_isa} >= %{openssl_version}
 %endif
+%if 0%{?rhel} >= 7 || 0%{?fedora} >= 19
 Requires: libpsl%{?_isa} >= %{libpsl_version}
+%endif
 Provides: libcurl = %{version}-%{release}
 Provides: libcurl%{?_isa} = %{version}-%{release}
 
@@ -258,8 +260,9 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %{_datadir}/aclocal/libcurl.m4
 
 %changelog
-* Fri Jan 04 2019 Kamil Dudka <kdudka@redhat.com> - 7.63.0-4
+* Fri Jan 04 2019 Kamil Dudka <kdudka@redhat.com> - 7.63.0-5
 - replace 0105-curl-7.63.0-libstubgss-ldadd.patch by upstream patch
+- fixed CentOS 6 build
 
 * Wed Dec 19 2018 Kamil Dudka <kdudka@redhat.com> - 7.63.0-3
 - curl -J: do not append to the destination file (#1658574)
