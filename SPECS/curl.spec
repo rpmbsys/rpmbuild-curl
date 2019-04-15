@@ -2,19 +2,10 @@
 
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
-Version: 7.63.0
-Release: 5%{?dist}
+Version: 7.64.1
+Release: 1%{?dist}
 License: MIT
 Source: https://curl.haxx.se/download/%{name}-%{version}.tar.xz
-
-# revert an upstream commit that broke `fedpkg new-sources` (#1659329)
-Patch1:   0001-curl-7.62.0-http-post-negotiate.patch
-
-# libtest: avoid symbol lookup error in libstubgss.so
-Patch2:   0002-curl-7.62.0-libtest-stub_gssapi-snprintf.patch
-
-# curl -J: do not append to the destination file (#1658574)
-Patch7:   0007-curl-7.63.0-JO-preserve-local-file.patch
 
 # patch making libcurl multilib ready
 Patch101: 0101-curl-7.32.0-multilib.patch
@@ -27,6 +18,9 @@ Patch103: 0103-curl-7.59.0-python3.patch
 
 # use localhost6 instead of ip6-localhost in the curl test-suite
 Patch104: 0104-curl-7.19.7-localhost6.patch
+
+# prevent valgrind from reporting false positives on x86_64
+Patch105: 0105-curl-7.63.0-lib1560-valgrind.patch
 
 Provides: webclient
 URL: https://curl.haxx.se/
@@ -137,13 +131,6 @@ documentation of the library, too.
 %prep
 %setup -q
 
-# upstream patches to revert
-%patch1 -p1 -R
-
-# upstream patches
-%patch2 -p1
-%patch7 -p1
-
 # Fedora patches
 %patch101 -p1
 %patch102 -p1
@@ -151,6 +138,7 @@ documentation of the library, too.
 %patch103 -p1
 %endif
 %patch104 -p1
+%patch105 -p1
 
 %if 0%{?fedora} >= 29
 # make tests/*.py use Python 3
@@ -231,6 +219,15 @@ make DESTDIR=$RPM_BUILD_ROOT INSTALL="install -p" install
 install -d $RPM_BUILD_ROOT%{_datadir}/aclocal
 install -m 644 docs/libcurl/libcurl.m4 $RPM_BUILD_ROOT%{_datadir}/aclocal
 
+# install zsh completion for curl
+# (we have to override LD_LIBRARY_PATH because we eliminated rpath)
+LD_LIBRARY_PATH="$RPM_BUILD_ROOT%{_libdir}:$LD_LIBRARY_PATH" \
+    make DESTDIR=$RPM_BUILD_ROOT INSTALL="install -p" install -C scripts
+
+# do not install /usr/share/fish/completions/curl.fish which is also installed
+# by fish-3.0.2-1.module_f31+3716+57207597 and would trigger a conflict
+rm -rf ${RPM_BUILD_ROOT}%{_datadir}/fish
+
 rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 
 %ldconfig_scriptlets -n libcurl
@@ -238,10 +235,11 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %files
 %doc CHANGES README*
 %doc docs/BUGS docs/FAQ docs/FEATURES
-%doc docs/MANUAL docs/RESOURCES
+%doc docs/RESOURCES
 %doc docs/TheArtOfHttpScripting docs/TODO
 %{_bindir}/curl
 %{_mandir}/man1/curl.1*
+%{_datadir}/zsh
 
 %files -n libcurl
 %license COPYING
@@ -260,6 +258,33 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %{_datadir}/aclocal/libcurl.m4
 
 %changelog
+* Wed Mar 27 2019 Kamil Dudka <kdudka@redhat.com> - 7.64.1-1
+- new upstream release
+
+* Mon Mar 25 2019 Kamil Dudka <kdudka@redhat.com> - 7.64.0-6
+- remove verbose "Expire in" ... messages (#1690971)
+
+* Thu Mar 21 2019 Kamil Dudka <kdudka@redhat.com> - 7.64.0-5
+- avoid spurious "Could not resolve host: [host name]" error messages
+
+* Wed Feb 27 2019 Kamil Dudka <kdudka@redhat.com> - 7.64.0-4
+- fix NULL dereference if flushing cookies with no CookieInfo set (#1683676)
+
+* Mon Feb 25 2019 Kamil Dudka <kdudka@redhat.com> - 7.64.0-3
+- prevent NetworkManager from leaking file descriptors (#1680198)
+
+* Mon Feb 11 2019 Kamil Dudka <kdudka@redhat.com> - 7.64.0-2
+- make zsh completion work again
+
+* Wed Feb 06 2019 Kamil Dudka <kdudka@redhat.com> - 7.64.0-1
+- new upstream release, which fixes the following vulnerabilities
+    CVE-2019-3823 - SMTP end-of-response out-of-bounds read
+    CVE-2019-3822 - NTLMv2 type-3 header stack buffer overflow
+    CVE-2018-16890 - NTLM type-2 out-of-bounds buffer read
+
+* Mon Feb 04 2019 Kamil Dudka <kdudka@redhat.com> - 7.63.0-7
+- prevent valgrind from reporting false positives on x86_64
+
 * Fri Jan 04 2019 Kamil Dudka <kdudka@redhat.com> - 7.63.0-5
 - replace 0105-curl-7.63.0-libstubgss-ldadd.patch by upstream patch
 - fixed CentOS 6 build
