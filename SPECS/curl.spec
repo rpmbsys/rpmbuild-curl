@@ -2,10 +2,13 @@
 
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
-Version: 7.64.1
+Version: 7.66.0
 Release: 1%{?dist}
 License: MIT
 Source: https://curl.haxx.se/download/%{name}-%{version}.tar.xz
+
+# fix memory leaked by parse_metalink()
+Patch1:   0001-curl-7.66.0-metalink-memleak.patch
 
 # patch making libcurl multilib ready
 Patch101: 0101-curl-7.32.0-multilib.patch
@@ -34,6 +37,7 @@ BuildRequires: libpsl-devel
 %endif
 BuildRequires: make
 BuildRequires: openssl-devel
+BuildRequires: perl-interpreter
 %if 0%{?fedora} >= 29
 BuildRequires: python3-devel
 %endif
@@ -42,6 +46,12 @@ BuildRequires: zlib-devel
 
 # needed to compress content of tool_hugehelp.c after changing curl.1 man page
 BuildRequires: perl(IO::Compress::Gzip)
+
+# needed for generation of shell completions
+BuildRequires: perl(Getopt::Long)
+BuildRequires: perl(Pod::Usage)
+BuildRequires: perl(strict)
+BuildRequires: perl(warnings)
 
 # gnutls-serv is used by the upstream test-suite
 BuildRequires: gnutls-utils
@@ -58,10 +68,8 @@ BuildRequires: perl(File::Copy)
 BuildRequires: perl(File::Spec)
 BuildRequires: perl(IPC::Open2)
 BuildRequires: perl(MIME::Base64)
-BuildRequires: perl(strict)
 BuildRequires: perl(Time::Local)
 BuildRequires: perl(Time::HiRes)
-BuildRequires: perl(warnings)
 BuildRequires: perl(vars)
 
 # The test-suite runs automatically through valgrind if valgrind is available
@@ -130,6 +138,9 @@ documentation of the library, too.
 
 %prep
 %setup -q
+
+# upstream patches
+%patch1 -p1
 
 # Fedora patches
 %patch101 -p1
@@ -258,6 +269,40 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %{_datadir}/aclocal/libcurl.m4
 
 %changelog
+* Wed Sep 11 2019 Kamil Dudka <kdudka@redhat.com> - 7.66.0-1
+- new upstream release, which fixes the following vulnerabilities
+    CVE-2019-5481 - double free due to subsequent call of realloc()
+    CVE-2019-5482 - heap buffer overflow in function tftp_receive_packet()
+
+* Tue Aug 27 2019 Kamil Dudka <kdudka@redhat.com> - 7.65.3-4
+- avoid reporting spurious error in the HTTP2 framing layer (#1690971)
+
+* Thu Aug 01 2019 Kamil Dudka <kdudka@redhat.com> - 7.65.3-3
+- improve handling of gss_init_sec_context() failures
+
+* Wed Jul 24 2019 Fedora Release Engineering <releng@fedoraproject.org> - 7.65.3-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_31_Mass_Rebuild
+
+* Sat Jul 20 2019 Paul Howarth <paul@city-fan.org> - 7.65.3-1
+- new upstream release
+
+* Wed Jul 17 2019 Kamil Dudka <kdudka@redhat.com> - 7.65.2-1
+- new upstream release
+
+* Wed Jun 05 2019 Kamil Dudka <kdudka@redhat.com> - 7.65.1-1
+- new upstream release
+
+* Thu May 30 2019 Kamil Dudka <kdudka@redhat.com> - 7.65.0-2
+- fix spurious timeout events with speed-limit (#1714893)
+
+* Wed May 22 2019 Kamil Dudka <kdudka@redhat.com> - 7.65.0-1
+- new upstream release, which fixes the following vulnerabilities
+    CVE-2019-5436 - TFTP receive buffer overflow
+    CVE-2019-5435 - integer overflows in curl_url_set()
+
+* Thu May 09 2019 Kamil Dudka <kdudka@redhat.com> - 7.64.1-2
+- do not treat failure of gss_init_sec_context() with --negotiate as fatal
+
 * Wed Mar 27 2019 Kamil Dudka <kdudka@redhat.com> - 7.64.1-1
 - new upstream release
 
