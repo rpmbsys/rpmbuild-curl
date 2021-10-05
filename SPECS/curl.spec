@@ -2,31 +2,21 @@
 
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
-Version: 7.66.0
+Version: 7.79.1
 Release: 1%{?dist}
 License: MIT
-Source: https://curl.haxx.se/download/%{name}-%{version}.tar.xz
-
-# fix memory leaked by parse_metalink()
-Patch1:   0001-curl-7.66.0-metalink-memleak.patch
+Source0: https://curl.se/download/%{name}-%{version}.tar.xz
+Source1: https://curl.se/download/%{name}-%{version}.tar.xz.asc
+# The curl download page ( https://curl.se/download.html ) links
+# to Daniel's address page https://daniel.haxx.se/address.html for the GPG Key,
+# which points to the GPG key as of April 7th 2016 of https://daniel.haxx.se/mykey.asc
+Source2: mykey.asc
 
 # patch making libcurl multilib ready
 Patch101: 0101-curl-7.32.0-multilib.patch
 
-# prevent configure script from discarding -g in CFLAGS (#496778)
-Patch102: 0102-curl-7.36.0-debug.patch
-
-# migrate tests/http_pipe.py to Python 3
-Patch103: 0103-curl-7.59.0-python3.patch
-
-# use localhost6 instead of ip6-localhost in the curl test-suite
-Patch104: 0104-curl-7.19.7-localhost6.patch
-
-# prevent valgrind from reporting false positives on x86_64
-Patch105: 0105-curl-7.63.0-lib1560-valgrind.patch
-
 Provides: webclient
-URL: https://curl.haxx.se/
+URL: https://curl.se/
 BuildRequires: automake
 BuildRequires: gcc
 BuildRequires: groff
@@ -35,14 +25,17 @@ BuildRequires: libnghttp2-devel
 %if 0%{?rhel} >= 7 || 0%{?fedora} >= 19
 BuildRequires: libpsl-devel
 %endif
+BuildRequires: libtool
 BuildRequires: make
 BuildRequires: openssl-devel
 BuildRequires: perl-interpreter
 %if 0%{?fedora} >= 29
 BuildRequires: python3-devel
 %endif
-BuildRequires: stunnel
 BuildRequires: zlib-devel
+
+# For gpg verification of source tarball
+BuildRequires: gnupg2
 
 # needed to compress content of tool_hugehelp.c after changing curl.1 man page
 BuildRequires: perl(IO::Compress::Gzip)
@@ -55,6 +48,9 @@ BuildRequires: perl(warnings)
 
 # gnutls-serv is used by the upstream test-suite
 BuildRequires: gnutls-utils
+
+# hostname(1) is used by the test-suite but it is missing in armv7hl buildroot
+BuildRequires: hostname
 
 # nghttpx (an HTTP/2 proxy) is used by the upstream test-suite
 BuildRequires: nghttp2
@@ -72,15 +68,26 @@ BuildRequires: perl(Time::Local)
 BuildRequires: perl(Time::HiRes)
 BuildRequires: perl(vars)
 
+%if 0%{?fedora}
+# needed for upstream test 1451
+BuildRequires: python3-impacket
+%endif
+
 # The test-suite runs automatically through valgrind if valgrind is available
 # on the system.  By not installing valgrind into mock's chroot, we disable
 # this feature for production builds on architectures where valgrind is known
 # to be less reliable, in order to avoid unnecessary build failures (see RHBZ
 # #810992, #816175, and #886891).  Nevertheless developers are free to install
 # valgrind manually to improve test coverage on any architecture.
-%ifarch x86_64 %{ix86}
+%ifarch x86_64
 # temporarily disabled completely because of https://bugzilla.redhat.com/1570246
 # BuildRequires: valgrind
+%endif
+
+# stunnel is used by upstream tests but it does not seem to work reliably
+# on s390x and occasionally breaks some tests (mainly 1561 and 1562)
+%ifnarch s390x
+BuildRequires: stunnel
 %endif
 
 # using an older version of libcurl could result in CURLE_UNKNOWN_OPTION
@@ -93,7 +100,8 @@ Requires: ca-certificates
 
 # require at least the version of openssl-libs that we were built against,
 # to ensure that we have the necessary symbols available (#1462184, #1462211)
-%global openssl_version %(pkg-config --modversion openssl 2>/dev/null || echo 0)
+# (we need to translate 3.0.0-alpha16 -> 3.0.0-0.alpha16 and 3.0.0-beta1 -> 3.0.0-0.beta1 though)
+%global openssl_version %({ pkg-config --modversion openssl 2>/dev/null || echo 0;} | sed 's|-|-0.|')
 
 %description
 curl is a command line tool for transferring data with URL syntax, supporting
@@ -137,19 +145,13 @@ developing programs which use the libcurl library. It contains the API
 documentation of the library, too.
 
 %prep
+%{gpgverify} --keyring='%{SOURCE2}' --signature='%{SOURCE1}' --data='%{SOURCE0}'
 %setup -q
 
 # upstream patches
-%patch1 -p1
 
 # Fedora patches
 %patch101 -p1
-%patch102 -p1
-%if 0%{?fedora} >= 29
-%patch103 -p1
-%endif
-%patch104 -p1
-%patch105 -p1
 
 %if 0%{?fedora} >= 29
 # make tests/*.py use Python 3
@@ -164,21 +166,42 @@ automake --add-missing --foreign
 # disable test 1112 (#565305), test 1455 (occasionally fails with 'bind failed
 # with errno 98: Address already in use' in Koji environment), and test 1801
 # <https://github.com/bagder/curl/commit/21e82bd6#commitcomment-12226582>
-# and test 1900, which is flaky and covers a deprecated feature of libcurl
-# <https://github.com/curl/curl/pull/2705>
-printf "1112\n1455\n1801\n1900\n" >> tests/data/DISABLED
+printf "1112\n1455\n1184\n1801\n" >> tests/data/DISABLED
 
 # disable test 1319 on ppc64 (server times out)
 %ifarch ppc64
 echo "1319" >> tests/data/DISABLED
 %endif
 
+# disable tests 320..322 on ppc64le where it started to hang/fail
+%ifarch ppc64le
+printf "320\n321\n322\n" >> tests/data/DISABLED
+%endif
+
+# temporarily disable tests 582 and 1452 on s390x (client times out)
 %ifarch s390x
-echo "582" >> tests/data/DISABLED
+printf "582\n1452\n" >> tests/data/DISABLED
+%endif
+
+# temporarily disable tests 702 703 716 on armv7hl (#1829180)
+%ifarch armv7hl
+printf "702\n703\n716\n" >> tests/data/DISABLED
 %endif
 
 # adapt test 323 for updated OpenSSL
-sed -e 's/^35$/35,52/' -i tests/data/test323
+sed -e 's|^35$|35,52|' -i tests/data/test323
+
+# use localhost6 instead of ip6-localhost in the curl test-suite
+(
+    # avoid glob expansion in the trace output of `bash -x`
+    { set +x; } 2>/dev/null
+    cmd="sed -e 's|ip6-localhost|localhost6|' -i tests/data/test[0-9]*"
+    printf "+ %s\n" "$cmd" >&2
+    eval "$cmd"
+)
+
+# regenerate the configure script and Makefile.in files
+autoreconf -fiv
 
 %build
 %configure \
@@ -207,7 +230,7 @@ make %{?_smp_mflags} V=1
 %check
 %if %{with_test}
 # we have to override LD_LIBRARY_PATH because we eliminated rpath
-LD_LIBRARY_PATH="$RPM_BUILD_ROOT%{_libdir}:$LD_LIBRARY_PATH"
+LD_LIBRARY_PATH="${PWD}/build-full/lib/.libs"
 export LD_LIBRARY_PATH
 
 # compile upstream test-cases
@@ -217,6 +240,10 @@ make %{?_smp_mflags} V=1
 # relax crypto policy for the test-suite to make it pass again (#1610888)
 export OPENSSL_SYSTEM_CIPHERS_OVERRIDE=XXX
 export OPENSSL_CONF=
+
+# prevent valgrind from being extremely slow (#1662656)
+# https://fedoraproject.org/wiki/Changes/DebuginfodByDefault
+unset DEBUGINFOD_URLS
 
 # run the upstream test-suite
 srcdir=../tests perl -I../tests ../tests/runtests.pl -a -p -v '!flaky'
@@ -245,9 +272,11 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 
 %files
 %doc CHANGES README*
-%doc docs/BUGS docs/FAQ docs/FEATURES
-%doc docs/RESOURCES
-%doc docs/TheArtOfHttpScripting docs/TODO
+%doc docs/BUGS.md
+%doc docs/FAQ
+%doc docs/FEATURES.md
+%doc docs/TODO
+%doc docs/TheArtOfHttpScripting.md
 %{_bindir}/curl
 %{_mandir}/man1/curl.1*
 %{_datadir}/zsh
@@ -259,7 +288,7 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 
 %files -n libcurl-devel
 %doc docs/examples/*.c docs/examples/Makefile.example docs/INTERNALS.md
-%doc docs/CONTRIBUTE.md docs/libcurl/ABI
+%doc docs/CONTRIBUTE.md docs/libcurl/ABI.md
 %{_bindir}/curl-config*
 %{_includedir}/curl
 %{_libdir}/*.so
@@ -269,6 +298,147 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 %{_datadir}/aclocal/libcurl.m4
 
 %changelog
+* Wed Sep 22 2021 Kamil Dudka <kdudka@redhat.com> - 7.79.1-1
+- new upstream release
+
+* Thu Sep 16 2021 Kamil Dudka <kdudka@redhat.com> - 7.79.0-4
+- fix regression in http2 implementation introduced in the last release
+
+* Thu Sep 16 2021 Sahana Prasad <sahana@redhat.com> - 7.79.0-3
+- Rebuilt with OpenSSL 3.0.0
+
+* Thu Sep 16 2021 Kamil Dudka <kdudka@redhat.com> - 7.79.0-2
+- make SCP/SFTP tests work with openssh-8.7p1
+
+* Wed Sep 15 2021 Kamil Dudka <kdudka@redhat.com> - 7.79.0-1
+- new upstream release, which fixes the following vulnerabilities
+    CVE-2021-22947 - STARTTLS protocol injection via MITM
+    CVE-2021-22946 - protocol downgrade required TLS bypassed
+    CVE-2021-22945 - use-after-free and double-free in MQTT sending
+
+* Tue Sep 14 2021 Sahana Prasad <sahana@redhat.com> - 7.78.0-4
+- Rebuilt with OpenSSL 3.0.0
+
+* Fri Jul 23 2021 Kamil Dudka <kdudka@redhat.com> - 7.78.0-3
+- make explicit dependency on openssl work with alpha/beta builds of openssl
+
+* Wed Jul 21 2021 Fedora Release Engineering <releng@fedoraproject.org> - 7.78.0-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_35_Mass_Rebuild
+
+* Wed Jul 21 2021 Kamil Dudka <kdudka@redhat.com> - 7.78.0-1
+- new upstream release, which fixes the following vulnerabilities
+    CVE-2021-22925 - TELNET stack contents disclosure again
+    CVE-2021-22924 - bad connection reuse due to flawed path name checks
+    CVE-2021-22923 - metalink download sends credentials
+    CVE-2021-22922 - wrong content via metalink not discarded
+
+* Wed Jun 02 2021 Kamil Dudka <kdudka@redhat.com> - 7.77.0-2
+- build the curl tool without metalink support (#1967213)
+
+* Wed May 26 2021 Kamil Dudka <kdudka@redhat.com> - 7.77.0-1
+- new upstream release, which fixes the following vulnerabilities
+    CVE-2021-22901 - TLS session caching disaster
+    CVE-2021-22898 - TELNET stack contents disclosure
+
+* Mon May 03 2021 Kamil Dudka <kdudka@redhat.com> - 7.76.1-2
+- http2: fix resource leaks detected by Coverity
+
+* Wed Apr 14 2021 Kamil Dudka <kdudka@redhat.com> - 7.76.1-1
+- new upstream release
+
+* Wed Mar 31 2021 Kamil Dudka <kdudka@redhat.com> - 7.76.0-1
+- new upstream release, which fixes the following vulnerabilities
+    CVE-2021-22890 - TLS 1.3 session ticket proxy host mixup
+    CVE-2021-22876 - Automatic referer leaks credentials
+
+* Wed Mar 24 2021 Kamil Dudka <kdudka@redhat.com> - 7.75.0-3
+- fix SIGSEGV upon disconnect of a ldaps:// transfer
+
+* Tue Feb 23 2021 Kamil Dudka <kdudka@redhat.com> - 7.75.0-2
+- build-require python3-impacket only on Fedora
+
+* Wed Feb 03 2021 Kamil Dudka <kdudka@redhat.com> - 7.75.0-1
+- new upstream release
+
+* Tue Jan 26 2021 Kamil Dudka <kdudka@redhat.com> - 7.74.0-4
+- do not use stunnel for tests on s390x builds to avoid spurious failures
+
+* Tue Jan 26 2021 Fedora Release Engineering <releng@fedoraproject.org> - 7.74.0-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_34_Mass_Rebuild
+
+* Wed Dec 09 2020 Kamil Dudka <kdudka@redhat.com> - 7.74.0-2
+- do not rewrite shebangs in test-suite to use python3 explicitly
+
+* Wed Dec 09 2020 Kamil Dudka <kdudka@redhat.com> - 7.74.0-1
+- new upstream release, which fixes the following vulnerabilities
+    CVE-2020-8286 - curl: Inferior OCSP verification
+    CVE-2020-8285 - libcurl: FTP wildcard stack overflow
+    CVE-2020-8284 - curl: trusting FTP PASV responses
+
+* Wed Oct 14 2020 Kamil Dudka <kdudka@redhat.com> - 7.73.0-2
+- prevent upstream test 1451 from being skipped
+
+* Wed Oct 14 2020 Kamil Dudka <kdudka@redhat.com> - 7.73.0-1
+- new upstream release
+
+* Thu Sep 10 2020 Jinoh Kang <aurhb20@protonmail.ch> - 7.72.0-2
+- fix multiarch conflicts in libcurl-minimal (#1877671)
+
+* Wed Aug 19 2020 Kamil Dudka <kdudka@redhat.com> - 7.72.0-1
+- new upstream release, which fixes the following vulnerability
+    CVE-2020-8231 - libcurl: wrong connect-only connection
+
+* Thu Aug 06 2020 Kamil Dudka <kdudka@redhat.com> - 7.71.1-5
+- setopt: unset NOBODY switches to GET if still HEAD
+
+* Mon Jul 27 2020 Fedora Release Engineering <releng@fedoraproject.org> - 7.71.1-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_33_Mass_Rebuild
+
+* Mon Jul 13 2020 Tom Stellard <tstellar@redhat.com> - 7.71.1-3
+- Use make macros
+- https://fedoraproject.org/wiki/Changes/UseMakeBuildInstallMacro
+
+* Fri Jul 03 2020 Kamil Dudka <kdudka@redhat.com> - 7.71.1-2
+- curl: make the --krb option work again (#1833193)
+
+* Wed Jul 01 2020 Kamil Dudka <kdudka@redhat.com> - 7.71.1-1
+- new upstream release
+
+* Wed Jun 24 2020 Kamil Dudka <kdudka@redhat.com> - 7.71.0-1
+- new upstream release, which fixes the following vulnerabilities
+    CVE-2020-8169 - curl: Partial password leak over DNS on HTTP redirect
+    CVE-2020-8177 - curl: overwrite local file with -J
+
+* Wed Apr 29 2020 Kamil Dudka <kdudka@redhat.com> - 7.70.0-1
+- new upstream release
+
+* Mon Apr 20 2020 Kamil Dudka <kdudka@redhat.com> - 7.69.1-3
+- SSH: use new ECDSA key types to check known hosts (#1824926)
+
+* Fri Apr 17 2020 Tom Stellard <tstellar@redhat.com> - 7.69.1-2
+- Prevent discarding of -g when compiling with clang
+
+* Wed Mar 11 2020 Kamil Dudka <kdudka@redhat.com> - 7.69.1-1
+- new upstream release
+
+* Mon Mar 09 2020 Kamil Dudka <kdudka@redhat.com> - 7.69.0-2
+- make Flatpak work again (#1810989)
+
+* Wed Mar 04 2020 Kamil Dudka <kdudka@redhat.com> - 7.69.0-1
+- new upstream release
+
+* Tue Jan 28 2020 Fedora Release Engineering <releng@fedoraproject.org> - 7.68.0-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_32_Mass_Rebuild
+
+* Wed Jan 08 2020 Kamil Dudka <kdudka@redhat.com> - 7.68.0-1
+- new upstream release
+
+* Thu Nov 14 2019 Kamil Dudka <kdudka@redhat.com> - 7.67.0-2
+- fix infinite loop on upload using a glob (#1771025)
+
+* Wed Nov 06 2019 Kamil Dudka <kdudka@redhat.com> - 7.67.0-1
+- new upstream release
+
 * Wed Sep 11 2019 Kamil Dudka <kdudka@redhat.com> - 7.66.0-1
 - new upstream release, which fixes the following vulnerabilities
     CVE-2019-5481 - double free due to subsequent call of realloc()

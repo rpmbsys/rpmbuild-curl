@@ -5,7 +5,7 @@ jobs:
       image: ubuntu-1604:201903-01
     environment:
       BINTRAY_REPO: custom
-      PACKAGE_VCS_URL: https://github.com/aursu/rpmbuild-curl
+      ARTIFACTORY_URL: https://rpmb.jfrog.io
     steps:
       - checkout
       - run:
@@ -20,9 +20,7 @@ jobs:
             docker-compose -f rpmbuild/docker-compose.bintray.yml pull
       - run:
           name: Build PHP Docker images
-          command: |
-            docker-compose -f docker-compose.base.yml build --pull
-            docker-compose build --no-cache
+          command: docker-compose build --no-cache
       - run:
           name: Build RPM packages
           command: docker-compose up
@@ -33,9 +31,4 @@ jobs:
               -e BINTRAY_USER=$BINTRAY_USER \
               -e BINTRAY_API_KEY=$BINTRAY_API_KEY \
               -e BINTRAY_REPO=$BINTRAY_REPO \
-              -e PACKAGE_VCS_URL=$PACKAGE_VCS_URL centos7bintray
-            docker-compose -f rpmbuild/docker-compose.bintray.yml run --rm \
-              -e BINTRAY_USER=$BINTRAY_USER \
-              -e BINTRAY_API_KEY=$BINTRAY_API_KEY \
-              -e BINTRAY_REPO=$BINTRAY_REPO \
-              -e PACKAGE_VCS_URL=$PACKAGE_VCS_URL centos6bintray
+              -e ARTIFACTORY_URL=$ARTIFACTORY_URL centos7bintray
